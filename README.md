@@ -1,6 +1,6 @@
 # Spring注解驱动开发
-## 组件注册
-### 1.@Configuration&@Bean给容器中注册组件
+## 1.组件注册
+### 1.1 @Configuration&@Bean给容器中注册组件
 ```java
 @Configuration
 public class MainConfig {
@@ -12,7 +12,7 @@ public class MainConfig {
 ```
 >通过`@Configuration`和`@Bean` 给spring ioc容器注入组件
 
-### 2.@ComponentScan-自动扫描组件&指定扫描规则
+### 1.2 @ComponentScan-自动扫描组件&指定扫描规则
 ```java
 @Configuration
 @ComponentScans(
@@ -38,7 +38,7 @@ public class MainConfig {
 `FilterType.REGEX`使用正则指定  
 `FilterType.CUSTOM`使用自定义规则
 
-### 3.@Scope-设置组件作用域
+### 1.3 @Scope-设置组件作用域
 >`@Scope`标注在组件容器上 并赋值达到对组件作用域的限定  
 
 `prototype`多实例的：ioc容器启动并不会去调用方法创建对象放在容器中。 每次获取的时候才会调用方法创建对象；  
@@ -46,10 +46,10 @@ public class MainConfig {
 `request`同一次请求创建一个实例  
 `session`同一个session创建一个实例  
 
-### 4.@Lazy-bean懒加载
+### 1.4 @Lazy-bean懒加载
 `@Lazy`标注的组件在容器启动的时候不会创建对象，第一次获取Bean时创建对象并初始化
 
-### 5.@Conditional-按照条件注册bean
+### 1.5 @Conditional-按照条件注册bean
 >`@Conditional`按照一定的条件进行判断，满足条件给容器中注册bean,通过下面的例子`@Conditional(LinuxCondition.class)`就能实现
 ```java
     /**
@@ -77,7 +77,7 @@ public class MainConfig {
     	}
     }
 ```
-### 6.@Import-给容器中快速导入一个组件
+### 1.6 @Import-给容器中快速导入一个组件
 1.`@Import`(要导入到容器中的组件)；容器中就会自动注册这个组件，id默认是全类名  
 2.`ImportSelector`返回需要导入的组件的全类名数组；
 ```java
@@ -118,4 +118,41 @@ public class MyImportBeanDefinitionRegistrar implements ImportBeanDefinitionRegi
     }
 }
 ```
-### 7.使用FactoryBean注册组件
+### 1.7 使用FactoryBean注册组件
+```java
+//创建一个Spring定义的FactoryBean
+public class ColorFactoryBean implements FactoryBean<Color> {
+	//返回一个Color对象，这个对象会添加到容器中
+	@Override
+	public Color getObject() throws Exception {
+		System.out.println("ColorFactoryBean...getObject...");
+		return new Color();
+	}
+	@Override
+	public Class<?> getObjectType() {
+		return Color.class;
+	}
+	//是单例？
+	//true：这个bean是单实例，在容器中保存一份
+	//false：多实例，每次获取都会创建一个新的bean；
+	@Override
+	public boolean isSingleton() {
+		return false;
+	}
+}
+
+@Configuration
+public class MainConfig {
+    /**
+    * 注意 默认获取到的是工厂bean调用getObject创建的对象
+    * 要获取工厂Bean本身，我们需要给id前面加一个&
+    * 			——> &colorFactoryBean
+    * @return 
+    */
+    @Bean
+    public ColorFactoryBean colorFactoryBean(){
+        return new ColorFactoryBean();
+    }
+}
+```
+## 2.生命周期
