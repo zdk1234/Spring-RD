@@ -266,6 +266,64 @@ BeanPostProcessor1.postProcessAfterInitialization
 BeanPostProcessor2.postProcessAfterInitialization  
 ……  
 #### 2.5.3 容器关闭时，Bean销毁过程中各方法的执行顺序
-1.调用由`@PreDestroy`注解的方法
-2.调用`DisposableBean`的`destroy()`;
-3.调用定制的`destroy-method`方法;
+1.调用由`@PreDestroy`注解的方法  
+2.调用`DisposableBean`的`destroy()`;  
+3.调用定制的`destroy-method`方法;  
+
+## 3 属性赋值
+### 3.1 @Value赋值 & @PropertySource加载外部配置文件
+>`@Value`注解中可以写基本数值，可以写`SpEl`表达式，也可以写`${}`取出运行环境变量的值（需要通过在配置类`@PropertySource`中配置属性文件）
+```java
+public class Person {
+    //使用@Value赋值；
+    //1、基本数值
+    //2、可以写SpEL； #{}
+    //3、可以写${}；取出配置文件【properties】中的值（在运行环境变量里面的值）
+    @Value("张三")
+    private String name;
+    @Value("#{20-2}")
+    private Integer age;
+    @Value("${person.nickName}")
+    private String nickName;
+    //getset...
+}
+//使用@PropertySource读取外部配置文件中的k/v保存到运行的环境变量中;加载完外部的配置文件以后使用${}取出配置文件的值
+@PropertySource(value={"classpath:/person.properties"})
+@Configuration
+public class MainConfigOfPropertyValues {
+	@Bean
+	public Person person(){
+		return new Person();
+	}
+}
+```
+## 4 自动装配
+### 4.1 @Autowired & @Qualifier & @Primary
+@Autowired：自动注入  
+1）默认优先按照类型去容器中找对应的组件:`applicationContext.getBean(BookDao.class)`;找到就赋值  
+2）如果找到多个相同类型的组件，再将属性的名称作为组件的id去容器中查找`applicationContext.getBean("bookDao")`  
+3）`@Qualifier("bookDao")`：使用@Qualifier指定需要装配的组件的id，而不是使用属性名  
+4）自动装配默认一定要将属性赋值好，没有就会报错； 可以使用`@Autowired(required=false)`;  
+5）`@Primary`：让Spring进行自动装配的时候，默认使用首选的bean；也可以继续使用@Qualifier指定需要装配的bean的名字  
+### 4.2 @Resource&@Inject
+关于自动注入Spring还支持使用`@Resource`(JSR250)和`@Inject`(JSR330)[java规范的注解]  
+`@Resource`:可以和@Autowired一样实现自动装配功能；默认是按照组件名称进行装配的；没有能支持@Primary功能没有支持@Autowired(reqiured=false);  
+`@Inject`:需要导入javax.inject的包，和Autowired的功能一样。没有required=false的功能；
+`@Autowired`:Spring定义的； `@Resource`、`@Inject`都是java规范
+### 4.3 自动装配方式
+>装配方式分为三种:方法注入、构造器注入、接口注入
+
+@Autowired:构造器，参数，方法，属性；都是从容器中获取参数组件的值  
+1）[标注在方法位置]：@Bean+方法参数；参数从容器中获取;默认不写@Autowired效果是一样的；都能自动装配  
+2）[标在构造器上]：如果组件只有一个有参构造器，这个有参构造器的@Autowired可以省略，参数位置的组件还是可以自动从容器中获取  
+3）放在参数位置(接口注入?)  
+### 4.4 Aware注入Spring底层组件&原理
+自定义组件想要使用Spring容器底层的一些组件（ApplicationContext，BeanFactory，xxx）；自定义组件实现xxxAware；在创建对象的时候，会调用接口规定的方法注入相关组件；Aware；把Spring底层一些组件注入到自定义的Bean中；
+xxxAware：功能使用xxxProcessor；ApplicationContextAware==》ApplicationContextAwareProcessor；
+### 4.5 @Profile环境搭建
+`Profile`:Spring为我们提供的可以根据当前环境，动态的激活和切换一系列组件的功能；
+>指定组件在哪个环境的情况下才能被注册到容器中，不指定，任何环境下都能注册这个组件
+
+1)加了环境标识的bean，只有这个环境被激活的时候才能注册到容器中。默认是default环境  
+2)写在配置类上，只有是指定的环境的时候，整个配置类里面的所有配置才能开始生效  
+3)没有标注环境标识的bean在任何环境下都是加载的；  
