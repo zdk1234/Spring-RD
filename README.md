@@ -327,3 +327,6 @@ xxxAware：功能使用xxxProcessor；ApplicationContextAware==》ApplicationCon
 1)加了环境标识的bean，只有这个环境被激活的时候才能注册到容器中。默认是default环境  
 2)写在配置类上，只有是指定的环境的时候，整个配置类里面的所有配置才能开始生效  
 3)没有标注环境标识的bean在任何环境下都是加载的；  
+>切换环境的方法：1.使用命令行，在虚拟机参数位置加载`-Dspring.profiles.active=test`就意味当前环境是test环境
+2.使用代码方式激活某种环境：applicationContext.getEnvironment.setActiveProfiles("test")
+
