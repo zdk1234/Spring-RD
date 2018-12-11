@@ -146,7 +146,6 @@ public class MainConfig {
     /**
     * 注意 默认获取到的是工厂bean调用getObject创建的对象
     * 要获取工厂Bean本身，我们需要给id前面加一个&
-    * 			——> &colorFactoryBean
     * @return 
     */
     @Bean
@@ -155,4 +154,118 @@ public class MainConfig {
     }
 }
 ```
+### 1.8 组件注册总结
+1、包扫描+组件标注注解（@Controller/@Service/@Repository/@Component）[自己写的类]  
+2、@Bean[导入的第三方包里面的组件]  
+3、@Import[快速给容器中导入一个组件]  
+>@Import(要导入到容器中的组件)；容器中就会自动注册这个组件，id默认是全类名  
+>ImportSelector:返回需要导入的组件的全类名数组；  
+>ImportBeanDefinitionRegistrar:手动注册bean到容器中  
+
+4、使用Spring提供的 FactoryBean（工厂Bean）;  
+>默认获取到的是工厂bean调用getObject创建的对象  
+>要获取工厂Bean本身，我们需要给id前面加一个& &colorFactoryBean 
+ 
 ## 2.生命周期
+### 2.1 @Bean指定初始化和销毁方法
+>指定`@Bean`中的`initMethod`和`destroyMethod`属性完成
+```java
+@ComponentScan("com.atguigu.bean")
+@Configuration
+public class MainConfigOfLifeCycle {
+	//指定Car类中的init和detory方法，作为实例初始化之后调用的，和销毁之后调用的方法
+	@Bean(initMethod="init",destroyMethod="detory")
+	public Car car(){
+		return new Car();
+	}
+}
+```
+### 2.2 InitializingBean和DisposableBean的前置后置方法
+>容器组件实现`InitializingBean`对`afterPropertiesSet()`进行覆盖，实现`DisposableBean`对`destroy()`方法进行覆盖
+```java
+@Component
+public class Cat implements InitializingBean, DisposableBean {
+    public Cat() {
+        System.out.println("cat constructor...");
+    }
+    @Override
+    public void destroy() throws Exception {
+        System.out.println("cat...destroy...");
+    }
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        System.out.println("cat...afterPropertiesSet...");
+    }
+}
+```
+### 2.3 @PostConstruct&@PreDestroy的前置后置方法
+>容器组件在方法上增加`@PostConstruct`:对象创建并赋值之后调用;`@PreDestroy`:容器移除对象之前调用
+```java
+@Component
+public class Dog {
+    public Dog() {
+        System.out.println("dog constructor...");
+    }
+    //对象创建并赋值之后调用
+    @PostConstruct
+    public void init() {
+        System.out.println("Dog....@PostConstruct...");
+    }
+    //容器移除对象之前
+    @PreDestroy
+    public void detory() {
+        System.out.println("Dog....@PreDestroy...");
+    }
+}
+```
+### 2.4 BeanPostProcessor后置处理器
+>容器组件实现`BeanPostProcessor`并覆盖`postProcessBeforeInitialization`和`postProcessAfterInitialization`
+```java
+@Component
+public class MyBeanPostProcessor implements BeanPostProcessor {
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+        System.out.println("postProcessBeforeInitialization..." + beanName + "=>" + bean);
+        return bean;
+    }
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+        System.out.println("postProcessAfterInitialization..." + beanName + "=>" + bean);
+        return bean;
+    }
+}
+```
+### 2.5 生命周期总结
+>以下总结参考[Spring Bean的生命周期中各方法的执行顺序](https://www.jianshu.com/p/80d4fa132747)
+#### 2.5.1 常用的设定方式
+1.通过实现`InitializingBean`接口来定制初始化之后的操作方法；  
+2.通过实现`DisposableBean`接口来定制销毁之前的操作方法；  
+3.通过元素的`init-method`属性指定初始化之后调用的操作方法；  
+4.通过元素的`destroy-method`属性指定销毁之前调用的操作方法；  
+5.在指定方法上加上`@PostConstruct`注解来制定该方法是在初始化之后调用；  
+6.在指定方法上加上`@PreDestroy`注解来制定该方法是在销毁之前调用；  
+7.实现`BeanNameAware`接口设置Bean的ID或者Name;  
+8.实现`BeanFactoryAware`接口设置BeanFactory;  
+9.实现`ApplicationContextAware`接口设置ApplicationContext；  
+10.注册实现了`BeanPostProcessor`的Bean后处理器，通过`postProcessBeforeInitialization`和`postProcessAfterInitialization`方法对初始化的Bean进行自定义处理;
+#### 2.5.2 初始化过程中各方法的执行顺序
+1.调用构造器`Bean.constructor`进行实例化;  
+2.调用`Setter`方法，设置属性值;  
+3.调用`BeanNameAware.setBeanName`设置Bean的ID或者Name;  
+4.调用`BeanFactoryAware.setBeanFactory`设置BeanFactory;  
+5.调用`ApplicationContextAware.setApplicationContext`置ApplicationContext；  
+6.调用`BeanPostProcessor`的预先初始化方法，如下：  
+BeanPostProcessor1.postProcessBeforeInitialization  
+BeanPostProcessor2.postProcessBeforeInitialization  
+……  
+7.调用由`@PostConstruct`注解的方法；  
+8.调用`InitializingBean.afterPropertiesSet`；  
+9.调用`Bean.init-mehod`初始化方法；  
+10.调用`BeanPostProcessor`的后初始化方法，如下：  
+BeanPostProcessor1.postProcessAfterInitialization  
+BeanPostProcessor2.postProcessAfterInitialization  
+……  
+#### 2.5.3 容器关闭时，Bean销毁过程中各方法的执行顺序
+1.调用由`@PreDestroy`注解的方法
+2.调用`DisposableBean`的`destroy()`;
+3.调用定制的`destroy-method`方法;
