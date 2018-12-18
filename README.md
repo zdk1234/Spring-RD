@@ -330,3 +330,53 @@ xxxAware：功能使用xxxProcessor；ApplicationContextAware==》ApplicationCon
 >切换环境的方法：1.使用命令行，在虚拟机参数位置加载`-Dspring.profiles.active=test`就意味当前环境是test环境
 2.使用代码方式激活某种环境：applicationContext.getEnvironment.setActiveProfiles("test")
 
+## 5 Spring AOP
+### 5.1 AOP功能示例
+通过`@EnableAspectJAutoProxy`开启aop功能，并要求被切入的业务逻辑类和切面类需要加入到容器中
+```java
+@EnableAspectJAutoProxy// 注解开启aop切面编程功能
+@Configuration
+public class MainConfigOfAOP {
+	//业务逻辑类加入容器中
+	@Bean
+	public MathCalculator calculator() {
+		return new MathCalculator();
+	}
+	//切面类加入到容器中
+	@Bean
+	public LogAspects logAspects() {
+		return new LogAspects();
+	}
+}
+```
+通过`@Aspect`告诉容器当前类是一个切面，通过切入点表达式定义切点`@Pointcut`，通过通知方法增强原有业务逻辑
+```java
+@Aspect
+public class LogAspects {
+	//抽取公共的切入点表达式
+	//1、本类引用
+	//2、其他的切面引用
+	@Pointcut("execution(public int com.atguigu.aop.MathCalculator.*(..))")
+	public void pointCut() {
+	}
+	//@Before在目标方法之前切入；切入点表达式（指定在哪个方法切入）
+	@Before("pointCut()")
+	public void logStart(JoinPoint joinPoint) {
+		Object[] args = joinPoint.getArgs();
+		System.out.println("" + joinPoint.getSignature().getName() + "运行。。。@Before:参数列表是：{" + Arrays.asList(args) + "}");
+	}
+	@After("pointCut()")
+	public void logEnd(JoinPoint joinPoint) {
+		System.out.println("" + joinPoint.getSignature().getName() + "结束。。。@After");
+	}
+	//JoinPoint一定要出现在参数表的第一位
+	@AfterReturning(value = "pointCut()", returning = "result")
+	public void logReturn(JoinPoint joinPoint, Object result) {
+		System.out.println("" + joinPoint.getSignature().getName() + "正常返回。。。@AfterReturning:运行结果：{" + result + "}");
+	}
+	@AfterThrowing(value = "pointCut()", throwing = "exception")
+	public void logException(JoinPoint joinPoint, Exception exception) {
+		System.out.println("" + joinPoint.getSignature().getName() + "异常。。。异常信息：{" + exception + "}");
+	}
+}
+```
